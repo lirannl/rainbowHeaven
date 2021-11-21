@@ -1,36 +1,59 @@
+use lazy_static::lazy_static;
 use regex::Regex;
 use rppal::gpio::Gpio;
 use std::error::Error;
 use std::io::{self};
 use std::process::{self};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread::sleep;
+use std::thread::spawn;
 use std::time::Duration;
 
 static GPIO_PIN_NUM: u8 = 14;
+lazy_static! {
+    static ref BIN_STR_REGEX: Regex = Regex::new("^[01]+$").unwrap();
+}
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let mut input = String::new();
+fn main() {
+    let (tx, rx) = channel::<Vec<bool>>();
+    spawn(move || match signalling_thread(rx) {
+        Ok(_) => {}
+        Err(error) => {
+            eprintln!("Error activating pin {}: {}", GPIO_PIN_NUM, error);
+            process::exit(0);
+        }
+    });
+    stdin_loop(&tx);
+}
+
+fn signalling_thread(rx: Receiver<Vec<bool>>) -> Result<(), Box<dyn Error>> {
     let mut pin = Gpio::new()?.get(GPIO_PIN_NUM)?.into_output();
-    main_loop(&mut input, &mut pin);
+    for seq in rx.into_iter() {
+        flash_pattern(seq, &mut pin);
+        // Wait 1 second between signals
+        sleep(Duration::from_secs(1));
+    }
     Ok(())
 }
 
-fn main_loop(input: &mut std::string::String, pin: &mut rppal::gpio::OutputPin) {
+fn stdin_loop(tx: &Sender<Vec<bool>>) {
+    let mut input = String::new();
     loop {
-        match io::stdin().read_line(input) {
+        match io::stdin().read_line(&mut input) {
             Ok(n) => {
                 let sliced = &input[..n - 1];
                 match sliced {
-                    //
-                    "on" => pin.set_high(),
-                    "off" => pin.set_low(),
                     "exit" => {
-                        pin.set_low();
                         process::exit(0);
                     }
-                    //
-                    binary_string if Regex::new("^[01]+$").unwrap().is_match(binary_string) => {
-                        flash_pattern(binary_string.chars().map(|c| c == '1').collect(), pin);
+                    // Capture binary strings and convert them to on-off states
+                    binary_string if BIN_STR_REGEX.is_match(binary_string) => {
+                        match tx.send(binary_string.chars().map(|c| c == '1').collect()) {
+                            Ok(_) => {}
+                            Err(error) => {
+                                eprintln!("Failed to send signal {}: {}", binary_string, error)
+                            }
+                        }
                     }
                     _ => println!("Unknown command {}", sliced),
                 }

@@ -8,4 +8,5 @@ edition = "2018"
 
 [dependencies]
 rppal = "0.13.1"
+lazy_static = "*"
 regex = "*"

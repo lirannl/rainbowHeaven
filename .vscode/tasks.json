@@ -1,0 +1,47 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"command": "cargo",
+			"args": [
+				"watch"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}",
+				"env": {
+					"PATH": "/usr/bin:/home/pi/.cargo/bin"
+				}
+			},
+			"problemMatcher": [
+				"$rustc"
+			],
+			"runOptions": {
+				"runOn": "folderOpen"
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "never"
+			},
+			"isBackground": true,
+			"label": "Rust: cargo watch - rainbow_heaven"
+		},
+		{
+			"type": "cargo",
+			"subcommand": "build",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"options": {
+				"env": {
+					"PATH": "/usr/bin:/home/pi/.cargo/bin"
+				}
+			},
+			"label": "Rust: cargo build - rainbow_heaven"
+		}
+	]
+}
